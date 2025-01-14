@@ -1,0 +1,288 @@
+const {Engine, World, Bodies,
+    Mouse, MouseConstraint,
+    Body, Constraint, Events
+} = Matter;
+
+let engine, world, ground,
+  boxes = [], boxImg, groundImg,
+  bird, birdImg = [], slingshot,
+  mc, backgroundImg, slingshotImg;
+let trajectoryPoints = [];
+
+function setup(){
+  
+  const canvas = 
+    createCanvas(500,300);
+  
+  boxImg = loadImage("img/box.jpg");
+  groundImg = loadImage("img/ground3.png");
+  backgroundImg = loadImage("img/background2.jpg");
+  slingshotImg = loadImage("img/slingshot.png");
+  
+  birdImg = [
+    loadImage("img/red.png"),
+    loadImage("img/yellow.png"),
+  ] 
+  
+  engine = Engine.create();
+  world = engine.world;
+  
+  const mouse = Mouse.create(canvas.elt);
+  mouse.pixelRatio = pixelDensity();
+  mc =
+    MouseConstraint.create(engine,
+    {
+      mouse: mouse,
+      collisionFilter: {mask: 2}
+    });
+  World.add(world, mc);
+  
+  ground = new Ground(
+    width/2, height-10,
+    width, 20, groundImg
+  );
+  
+  for (let i=0; i<=6; i++) {
+    let box = new Box(
+      400, height - 40*i,
+      40, 40, boxImg
+    );
+    boxes.push(box);
+    
+    box = new Box(
+      440, height - 40*i,
+      40, 40, boxImg
+    );
+    boxes.push(box);
+  }
+  
+  bird = new Bird(
+    100, 200, 15, birdImg[0]);
+    
+  slingshot = new SlingShot(
+    bird);
+    
+  /*Events.on(engine,
+    'afterUpdate',
+    () => slingshot.fly(mc)
+    );*/
+}
+
+function draw(){
+  imageMode(CORNER);
+  image(backgroundImg, 0, 0, width, height);
+  Engine.update(engine);
+  
+  // Update trajectory points only when pulling slingshot
+  if (mc.mouse.button === 0 && slingshot.sling.bodyB) {
+    trajectoryPoints = calculateTrajectoryPoints(bird, slingshot);
+  } else if (!slingshot.sling.bodyB) {
+    trajectoryPoints = []; // Clear points when bird is launched
+  }
+  
+  // Draw trajectory points
+  push();
+  fill(255);
+  noStroke();
+  for (let point of trajectoryPoints) {
+    ellipse(point.x, point.y, 4, 4);
+  }
+  pop();
+  
+  slingshot.fly(mc); 
+  
+  for (const box of boxes){
+    box.show();
+  }
+  
+  slingshot.show();
+  bird.show();  
+  ground.show();
+}
+
+function keyPressed(){
+  if (key== ' ') {
+    bird.clear();
+    
+    const index =
+      floor(random(0, birdImg.length));
+    
+    bird = new Bird(
+    100, 200, 15, birdImg[index]);
+    slingshot.attach(bird);
+  }
+}
+
+function calculateTrajectoryPoints(bird, sling) {
+  if (!sling.sling.bodyB) return []; // Return empty array if bird is launched
+  
+  const points = [];
+  const position = bird.body.position;
+  const anchorPos = sling.sling.pointA;
+  
+  // Calculate velocity based on how far the bird is pulled
+  const force = {
+    x: (anchorPos.x - position.x) * 0.2,
+    y: (anchorPos.y - position.y) * 0.2
+  };
+  
+  // Simulate positions
+  let x = position.x;
+  let y = position.y;
+  let velocityX = force.x;
+  let velocityY = force.y;
+  
+  // Calculate points
+  for (let i = 0; i < 10; i++) {
+    points.push({x, y});
+    
+    // Update position
+    x += velocityX * 3;
+    y += velocityY * 3;
+    
+    // Add gravity effect
+    velocityY += 0.3;
+  }
+  
+  return points;
+}
+
+class Bird {
+  constructor(x, y, r, img){
+    this.body = Bodies.circle(
+      x, y, r, {
+        restitution: 0.1,
+        collisionFilter: {
+          category: 2
+        }
+      }
+    );
+    Body.setMass(this.body,
+      2);
+    this.img = img;
+    World.add(world,
+      this.body); 
+  }
+  
+  show(){
+    push();
+    if(this.img) {
+      imageMode(CENTER);
+      translate(
+        this.body.position.x,
+        this.body.position.y);
+      rotate(this.body.angle);
+      image(this.img,
+        0,0,
+        2*this.body.circleRadius,
+        2*this.body.circleRadius);
+    } else {
+    ellipse(this.body.position.x,
+      this.body.position.y,
+      2*this.body.circleRadius,
+      2*this.body.circleRadius);
+    }
+    pop();
+  }
+  
+  clear(){
+    World.remove(world, this.body);
+  }
+}
+
+class Box {
+  constructor(x, y, w, h,
+    img, options={}){
+      this.body =
+        Bodies.rectangle(
+        x, y, w, h, options);
+      this.w = w;
+      this.h = h;
+      this.img = img;
+      World.add(world,
+      this.body);
+  }
+  
+  show() {
+    push();
+    translate(this.body.position.x,
+         this.body.position.y);
+    rotate(this.body.angle);
+    
+    if(this.img){
+      imageMode(CENTER);
+      image(this.img,
+            0,0,
+            this.w, this.h);
+    } else {
+      rectMode(CENTER);
+      rect(0, 0,
+           this.w, this.h);      
+    }
+    pop();
+  }
+  
+}
+
+class Ground extends Box {
+  constructor(x,y,w,h,img){
+    super(x,y,w,h, img,
+      {isStatic: true});
+  }
+}
+
+class SlingShot {
+  constructor(bird) {
+    this.sling = Constraint.create({
+      pointA: {x: 100, y: 225}, // Slingshot position
+      bodyB: bird.body,
+      stiffness: 0.05,
+      length: 0
+    });
+    
+    this.slingshotPosition = {x: 100, y: 250};
+    this.slingshotWidth = 30; 
+    this.slingshotHeight = 75;  
+    World.add(world, this.sling);
+  }
+  
+show() {
+    if (this.sling.bodyB) {
+      const posA = this.sling.pointA;
+      const posB = this.sling.bodyB.position;
+      
+      push();
+      strokeWeight(3); 
+      stroke(38, 23, 8);
+      
+      const stretch = ((dist(posA.x, posA.y, posB.x, posB.y) *-0.1 )/ 10)  ;
+      strokeWeight(4 / stretch);
+      
+      line(posA.x - 10, posA.y, posB.x - 10, posB.y);
+      line(posA.x + 10, posA.y, posB.x + 10, posB.y);
+      pop();
+    }
+    
+    imageMode(CENTER);
+    image(slingshotImg, 
+          this.slingshotPosition.x,
+          this.slingshotPosition.y,
+          this.slingshotWidth,
+          this.slingshotHeight);
+  }
+  
+  fly(mc){
+   if(this.sling.bodyB &&
+     mc.mouse.button === -1 &&
+     (this.sling.bodyB.position.x >
+     this.sling.pointA.x + 10)
+     ) {
+       this.sling.bodyB.collisionFilter.category = 1;
+       this.sling.bodyB = null
+   }
+  }
+  
+  attach(bird){
+    this.sling.bodyB = bird.body;
+  }
+}
