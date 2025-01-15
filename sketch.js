@@ -12,6 +12,10 @@ let trajectoryPoints = [];
 let score = 0;
 let width = 800;
 let height = 500;
+
+let turnDelay = 2000; 
+let isChangingTurn = false;
+let lastBirdLaunchTime = null;
 function setup(){
   
   const canvas = 
@@ -117,19 +121,33 @@ function draw(){
   slingshot.show();
   bird.show();  
   ground.show();
+  checkIfBirdStopped();
 }
 
-function keyPressed(){
-  if (key== ' ') {
-    bird.clear();
-    
-    const index =
-      floor(random(0, birdImg.length));
-    
-    bird = new Bird(
-    100, 200, 15, birdImg[index]);
-    slingshot.attach(bird);
+function checkIfBirdStopped() {
+  if (!bird || !bird.body) return;
+
+  // Velocidad del pájaro
+  const velocity = bird.body.velocity;
+  const speed = Math.sqrt(velocity.x ** 2 + velocity.y ** 2);
+
+  // Si el pájaro está detenido y no estamos ya cambiando de turno
+  if (speed < 0.1 && !slingshot.sling.bodyB && !isChangingTurn) {
+    isChangingTurn = true;
+    setTimeout(() => {
+      prepareNextBird();
+      isChangingTurn = false;
+    }, turnDelay); // Esperar unos segundos antes de preparar el siguiente pájaro
   }
+}
+
+function prepareNextBird() {
+  bird.clear();
+
+  const index = floor(random(0, birdImg.length));
+
+  bird = new Bird(100, 200, 15, birdImg[index]);
+  slingshot.attach(bird);
 }
 
 function calculateTrajectoryPoints(bird, sling) {
