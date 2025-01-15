@@ -4,17 +4,22 @@ const {Engine, World, Bodies,
 } = Matter;
 
 let engine, world, ground,
-  boxes = [], boxImg, groundImg,
+  objects = [], boxImg, wood2Img, stoneImg, groundImg,
   bird, birdImg = [], slingshot,
   mc, backgroundImg, slingshotImg;
 let trajectoryPoints = [];
 
+let score = 0;
+let width = 800;
+let height = 500;
 function setup(){
   
   const canvas = 
-    createCanvas(500,300);
+    createCanvas(width,height);
   
-  boxImg = loadImage("img/box.jpg");
+  boxImg = loadImage("img/wood1.png");
+  wood2Img = loadImage("img/wood2.png");
+  stoneImg = loadImage("img/stone.png");
   groundImg = loadImage("img/ground3.png");
   backgroundImg = loadImage("img/background2.jpg");
   slingshotImg = loadImage("img/slingshot.png");
@@ -41,20 +46,7 @@ function setup(){
     width/2, height-10,
     width, 20, groundImg
   );
-  
-  for (let i=0; i<=6; i++) {
-    let box = new Box(
-      400, height - 40*i,
-      40, 40, boxImg
-    );
-    boxes.push(box);
-    
-    box = new Box(
-      440, height - 40*i,
-      40, 40, boxImg
-    );
-    boxes.push(box);
-  }
+  createMap();
   
   bird = new Bird(
     100, 200, 15, birdImg[0]);
@@ -66,6 +58,33 @@ function setup(){
     'afterUpdate',
     () => slingshot.fly(mc)
     );*/
+}
+
+function createMap() {
+
+  objects.push(new Box( 380, height - 40, 40, 40, boxImg));
+  objects.push(new Box( 620, height - 40, 40, 40, boxImg));
+  objects.push(new Box( 500, height - 40, 40, 40, boxImg));
+
+  objects.push(new Box( 580, height - 50, 150, 10, wood2Img)); 
+  objects.push(new Box( 420, height - 50, 150, 10, wood2Img)); 
+
+  objects.push(new Box( 430, height - 90, 40, 40, stoneImg)); 
+  objects.push(new Box( 570, height - 90, 40, 40, stoneImg)); 
+  objects.push(new Box( 350, height - 90, 10, 40, stoneImg));
+  objects.push(new Box( 650, height - 90, 10, 40, stoneImg));
+
+  objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
+  objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
+
+  objects.push(new Box( 430, height - 160, 20, 70, stoneImg)); 
+  objects.push(new Box( 570, height - 160, 20, 70, stoneImg));
+
+  objects.push(new Box( 500, height - 180, 170, 10, wood2Img));
+
+  objects.push(new Box( 430, height - 220, 40, 40, boxImg)); 
+  objects.push(new Box( 570, height - 220, 40, 40, boxImg)); 
+
 }
 
 function draw(){
@@ -91,7 +110,7 @@ function draw(){
   
   slingshot.fly(mc); 
   
-  for (const box of boxes){
+  for (const box of objects){
     box.show();
   }
   
@@ -202,7 +221,9 @@ class Box {
       World.add(world,
       this.body);
   }
-  
+  getPoints() {
+    return this.points;
+  }
   show() {
     push();
     translate(this.body.position.x,
@@ -221,9 +242,16 @@ class Box {
     }
     pop();
   }
+  // Reduce life on impact
+  reduceLife(impactForce) {
+    this.life -= impactForce;
+    if (this.life <= 0) {
+      score += this.points; // Add points to the score
+      World.remove(world, this.body); // Remove the box from the world
+    }
+  }
   
 }
-
 class Ground extends Box {
   constructor(x,y,w,h,img){
     super(x,y,w,h, img,
@@ -234,13 +262,13 @@ class Ground extends Box {
 class SlingShot {
   constructor(bird) {
     this.sling = Constraint.create({
-      pointA: {x: 100, y: 225}, // Slingshot position
+      pointA: {x: 100, y: height - 80}, // Slingshot position
       bodyB: bird.body,
       stiffness: 0.05,
       length: 0
     });
     
-    this.slingshotPosition = {x: 100, y: 250};
+    this.slingshotPosition = {x: 100, y: height - 57};
     this.slingshotWidth = 30; 
     this.slingshotHeight = 75;  
     World.add(world, this.sling);
