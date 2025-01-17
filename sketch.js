@@ -9,7 +9,7 @@ let trajectoryPoints = [];
 
 let pigs = [];
 let pigImg;
-
+let starImg;
 let score = 0;
 let width = 800;
 let height = 500;
@@ -50,6 +50,7 @@ function setup() {
     ];
   
     pigImg = loadImage("img/pig.webp");
+    starImg = loadImage("img/star.png");
 
     // Initialize positions after canvas is created
     waitingPositions = [
@@ -74,7 +75,7 @@ function setup() {
     startButton.class('game-button');
     
     restartButton = createButton('Play Again');
-    restartButton.position(width/2 - 50, height/2 + 50);
+    restartButton.position(width/2 - 50, height/2 + 100);
     restartButton.mousePressed(restartGame);
     restartButton.class('game-button');
     restartButton.hide();
@@ -101,6 +102,12 @@ function startGame() {
     
     // Inicializar el mundo del juego
     setupGameWorld();
+}
+
+function getStarsForScore(score) {
+    if (score > 2000) return 3;
+    if (score > 1000) return 2;
+    return 1;
 }
 
 function setupGameWorld() {
@@ -144,10 +151,10 @@ function setupGameWorld() {
         const boxA = objects.find(b => b.body === bodyA);
         const boxB = objects.find(b => b.body === bodyB);
               if (boxA && !pigB && !boxB) {
-             boxA.reduceLife(impactForce * 40)
+             boxA.reduceLife(impactForce * 4)
         }
         if (boxB && !birdA  && !boxB) {
-            boxB.reduceLife(impactForce * 40)
+            boxB.reduceLife(impactForce * 4)
         }
     });
 });
@@ -205,6 +212,9 @@ function draw() {
     }
 }
 
+
+
+
 function drawStartScreen() {
     push();
     background(backgroundImg);
@@ -212,11 +222,11 @@ function drawStartScreen() {
     textSize(48);
     fill(255);
     stroke(0);
-    strokeWeight(4);
-    text('Angry Birds Clone', width/2, height/3);
-    
+    strokeWeight(6);  // Mayor grosor para el contorno
+    text('Angry Birds Clone', width / 2, height / 3);
+
     textSize(24);
-    text('Use the slingshot to destroy all the pigs!', width/2, height/2);
+    text('Use the slingshot to destroy all the pigs!', width / 2, height / 2);
     pop();
 }
 
@@ -224,22 +234,22 @@ function drawGameScreen() {
     imageMode(CORNER);
     image(backgroundImg, 0, 0, width, height);
     Engine.update(engine);
-    
+
     if (isBirdDead()) {
         nextBird();
     }
-    
+
     if (!isLaunched) {
         updateWaitingBirds();
     }
-    
+
     // Dibujar puntos de trayectoria
     if (mc.mouse.button === 0 && slingshot.sling.bodyB) {
         trajectoryPoints = calculateTrajectoryPoints(currentBird, slingshot);
     } else if (!slingshot.sling.bodyB) {
         trajectoryPoints = [];
     }
-    
+
     push();
     fill(255);
     noStroke();
@@ -247,7 +257,7 @@ function drawGameScreen() {
         ellipse(point.x, point.y, 4, 4);
     }
     pop();
-    
+
     // Mostrar elementos del juego
     slingshot.fly(mc);
     for (const box of objects) box.show();
@@ -255,7 +265,7 @@ function drawGameScreen() {
     slingshot.show();
     for (const bird of birds) bird.show();
     ground.show();
-    
+
     // Mostrar score y pájaros restantes
     push();
     fill(255);
@@ -266,25 +276,36 @@ function drawGameScreen() {
     pop();
 }
 
+
+
 function drawGameOverScreen() {
     push();
-
     textAlign(CENTER, CENTER);
     textSize(48);
     fill(255);
     stroke(0);
     strokeWeight(4);
-    
+
     if (levelCompleted) {
-        text('Level Complete!', width/2, height/3);
-    } else {
-        text('Game Over', width/2, height/3);
+        text('Level Complete!', width / 2, height / 3);
+      
+    // Mostrar estrellas según la puntuación
+    const stars = getStarsForScore(finalScore);
+    let starX = width / 2 - 50;
+    for (let i = 0; i < stars; i++) {
+        image(starImg, starX + i * 60, height / 2 + 40, 40, 40);  // Asegúrate de cargar la imagen de la estrella
     }
-    
+    } else {
+        text('Game Over', width / 2, height / 3);
+    }
+
     textSize(32);
-    text(`Final Score: ${finalScore}`, width/2, height/2);
+    text(`Final Score: ${finalScore}`, width / 2, height / 2);
+
+
     pop();
 }
+
 
 // Agregar estilos CSS al documento HTML
 const styles = document.createElement('style');
@@ -515,13 +536,13 @@ class Box {
       this.h = h;
       this.img = img;
       this.points = 10;
-      this.life = 50;
+      this.life = 100;
       World.add(world,
       this.body);
   }
 
   reduceLife(impactForce) {
-        const damage = impactForce * 10; // Reducir el daño para hacer el juego más balanceado
+        const damage = impactForce * 3; // Reducir el daño para hacer el juego más balanceado
         this.life -= damage;
         this.isDamaged = true;
         
@@ -662,7 +683,7 @@ class Pig {
     }
     
     reduceLife(impactForce) {
-        const damage = impactForce * 10; // Reducir el daño para hacer el juego más balanceado
+        const damage = impactForce ; // Reducir el daño para hacer el juego más balanceado
         this.life -= damage;
         this.isDamaged = true;
         
