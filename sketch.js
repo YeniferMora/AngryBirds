@@ -1,12 +1,10 @@
 const {Engine, World, Bodies, Mouse, MouseConstraint, Body, Constraint, Events} = Matter;
 
-
-  bird, birdImg = [], slingshot,
+let bird, birdImg = [], slingshot,
   mc, backgroundImg, slingshotImg;
 let engine, world, ground, objects = [], boxImg, wood2Img, stoneImg, groundImg, starImg;
 let birds = [];
 let currentBird;
-let birdImg = [];
 
 let trajectoryPoints = [];
 
@@ -18,9 +16,6 @@ let totalBirds = 4;
 let isGameOver = false;
 let width = 800;
 let height = 500;
-let slingshot;
-let mc;
-let backgroundImg, slingshotImg;
 let isLaunched = false;
 let waitingPositions;
 
@@ -229,7 +224,7 @@ function drawStartScreen() {
     stroke(0);
     strokeWeight(6);  // Mayor grosor para el contorno
     text('Angry Birds Clone', width / 2, height / 3);
-
+    noStroke();
     textSize(24);
     text('Use the slingshot to destroy all the pigs!', width / 2, height / 2);
     pop();
@@ -537,7 +532,7 @@ class Box {
   constructor(x, y, w, h,
     img, options={
     collisionFilter: {
-          category: 1,mask:3
+          category: 1
         }}){
       this.body =
         Bodies.rectangle(
@@ -588,7 +583,9 @@ class Box {
 }
 class Stone extends Box {
   constructor(x,y,w,h,img){
-    super(x,y,w,h, img);
+    super(x,y,w,h, img, {collisionFilter: {
+          category: 2,
+        }});
   }
 }
 class Ground extends Box {
@@ -596,7 +593,7 @@ class Ground extends Box {
     super(x,y,w,h, img,
       {isStatic: true,
       collisionFilter: {
-          category: 3,
+          category: 2,
         }});
   }
 }
