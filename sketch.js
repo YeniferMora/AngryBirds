@@ -4,12 +4,15 @@ const {Engine, World, Bodies,
 } = Matter;
 
 let engine, world, ground,
-  objects = [], boxImg, wood2Img, stoneImg, groundImg,
+  objects = [], boxImg, wood2Img, stoneImg, groundImg, starImg,
   bird, birdImg = [], slingshot,
   mc, backgroundImg, slingshotImg;
 let trajectoryPoints = [];
 
 let score = 0;
+let birdsCount = 0;
+let totalBirds = 4;
+let isGameOver = false;
 let width = 800;
 let height = 500;
 
@@ -27,6 +30,7 @@ function setup(){
   groundImg = loadImage("img/ground3.png");
   backgroundImg = loadImage("img/background2.jpg");
   slingshotImg = loadImage("img/slingshot.png");
+  starImg = loadImage("img/star.png");
   
   birdImg = [
     loadImage("img/red.png"),
@@ -65,7 +69,7 @@ function setup(){
 }
 
 function createMap() {
-
+  objects= [];
   objects.push(new Box( 380, height - 40, 40, 40, boxImg));
   objects.push(new Box( 620, height - 40, 40, 40, boxImg));
   objects.push(new Box( 500, height - 40, 40, 40, boxImg));
@@ -73,16 +77,16 @@ function createMap() {
   objects.push(new Box( 580, height - 50, 150, 10, wood2Img)); 
   objects.push(new Box( 420, height - 50, 150, 10, wood2Img)); 
 
-  objects.push(new Box( 430, height - 90, 40, 40, stoneImg)); 
-  objects.push(new Box( 570, height - 90, 40, 40, stoneImg)); 
-  objects.push(new Box( 350, height - 90, 10, 40, stoneImg));
-  objects.push(new Box( 650, height - 90, 10, 40, stoneImg));
+  objects.push(new Stone( 430, height - 90, 40, 40, stoneImg)); 
+  objects.push(new Stone( 570, height - 90, 40, 40, stoneImg)); 
+  objects.push(new Stone( 350, height - 90, 10, 40, stoneImg));
+  objects.push(new Stone( 650, height - 90, 10, 40, stoneImg));
 
   objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
   objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
 
-  objects.push(new Box( 430, height - 160, 20, 70, stoneImg)); 
-  objects.push(new Box( 570, height - 160, 20, 70, stoneImg));
+  objects.push(new Stone( 430, height - 160, 20, 70, stoneImg)); 
+  objects.push(new Stone( 570, height - 160, 20, 70, stoneImg));
 
   objects.push(new Box( 500, height - 180, 170, 10, wood2Img));
 
@@ -96,32 +100,112 @@ function draw(){
   image(backgroundImg, 0, 0, width, height);
   Engine.update(engine);
   
-  // Update trajectory points only when pulling slingshot
-  if (mc.mouse.button === 0 && slingshot.sling.bodyB) {
-    trajectoryPoints = calculateTrajectoryPoints(bird, slingshot);
-  } else if (!slingshot.sling.bodyB) {
-    trajectoryPoints = []; // Clear points when bird is launched
+  if (!isGameOver){
+    // Update trajectory points only when pulling slingshot
+    if (mc.mouse.button === 0 && slingshot.sling.bodyB) {
+      trajectoryPoints = calculateTrajectoryPoints(bird, slingshot);
+    } else if (!slingshot.sling.bodyB) {
+      trajectoryPoints = []; // Clear points when bird is launched
+    }
+    
+    // Draw trajectory points
+    push();
+    fill(255);
+    noStroke();
+    for (let point of trajectoryPoints) {
+      ellipse(point.x, point.y, 4, 4);
+    }
+    pop();
+    
+    slingshot.fly(mc); 
+    
+    for (const box of objects){
+      box.show();
+    }
+    
+    slingshot.show();
+    bird.show();  
+    ground.show();
+    checkIfBirdStopped();
+    displayScoreAndStars(score);
+    if (birdsCount === totalBirds) {
+      isGameOver = true;
+    }
+  }else {
+    showGameOverScreen(score);
   }
-  
-  // Draw trajectory points
+}
+
+function keyPressed() {
+  if (isGameOver) {
+    resetGame();
+  }
+}
+function mousePressed() {
+  if (isGameOver) {
+    resetGame();
+  }
+}
+function resetGame() {
+  isGameOver = false;
+  score = 0;
+  birdsCount = 0;
+  World.clear(world,false);
+  setup()
+}
+function showGameOverScreen(score) {
+  const stars = getStars(score); 
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  push();
+  fill(0, 0, 0, 200);
+  rectMode(CENTER);
+  rect(centerX, centerY, 400, 300, 20);
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(24);
+  text(`Score: ${score}`, centerX, centerY - 40);
+
+  const starSize = 40;
+  const starSpacing = 60;
+
+  for (let i = 0; i < stars; i++) {
+    image(starImg, centerX - (starSpacing * (stars - 1)) / 2 + i * starSpacing, centerY, starSize, starSize);
+  }
+
+  textSize(18);
+  fill(255, 200, 0);
+  text("Click to Restart", centerX, centerY + 100);
+  pop();
+}
+function displayScoreAndStars(score) {
+  const stars = getStars(score);
+  const starSize = 30;
+  const padding = 20; 
+  const xStart = width - padding - starSize; 
+  const yStart = padding;
+
   push();
   fill(255);
-  noStroke();
-  for (let point of trajectoryPoints) {
-    ellipse(point.x, point.y, 4, 4);
+  textSize(30);
+  textStyle(BOLD);
+  textAlign(RIGHT);
+  
+  text(`Score: ${score}`, width - padding, yStart+ 10);
+
+  for (let i = 0; i < stars; i++) {
+    image(starImg, xStart - i * (starSize + 5), yStart + 30, starSize, starSize);
   }
   pop();
-  
-  slingshot.fly(mc); 
-  
-  for (const box of objects){
-    box.show();
-  }
-  
-  slingshot.show();
-  bird.show();  
-  ground.show();
-  checkIfBirdStopped();
+}
+
+function getStars(score) {
+  if (score >= 300) return 3; 
+  if (score >= 200) return 2; 
+  if (score >= 100) return 1;
+  return 0; 
 }
 
 function checkIfBirdStopped() {
@@ -143,7 +227,7 @@ function checkIfBirdStopped() {
 
 function prepareNextBird() {
   bird.clear();
-
+  birdsCount++;
   const index = floor(random(0, birdImg.length));
 
   bird = new Bird(100, 200, 15, birdImg[index]);
@@ -269,6 +353,11 @@ class Box {
     }
   }
   
+}
+class Stone extends Box {
+  constructor(x,y,w,h,img){
+    super(x,y,w,h, img);
+  }
 }
 class Ground extends Box {
   constructor(x,y,w,h,img){
