@@ -19,8 +19,23 @@ let backgroundImg, slingshotImg;
 let isLaunched = false;
 let waitingPositions;
 
+const GAME_STATE = {
+    START: 'start',
+    PLAYING: 'playing',
+    GAME_OVER: 'gameover'
+};
+
+let currentState = GAME_STATE.START;
+let finalScore = 0;
+let gameStarted = false;
+let startButton;
+let restartButton;
+let levelCompleted = false;
+
+
 function setup() {
     const canvas = createCanvas(width,height);
+  
     
     // Load images
     boxImg = loadImage("img/wood1.png");
@@ -50,16 +65,52 @@ function setup() {
     mouse.pixelRatio = pixelDensity();
     mc = MouseConstraint.create(engine, {
         mouse: mouse,
-        collisionFilter: {mask: 2 }
+        collisionFilter: {mask: 2}
     });
+  
+    startButton = createButton('Start Game');
+    startButton.position(width/2 - 50, height/2 + 50);
+    startButton.mousePressed(startGame);
+    startButton.class('game-button');
+    
+    restartButton = createButton('Play Again');
+    restartButton.position(width/2 - 50, height/2 + 50);
+    restartButton.mousePressed(restartGame);
+    restartButton.class('game-button');
+    restartButton.hide();
+    
+    // Inicialmente ocultar el mundo del juego
+    World.clear(world);
+    Engine.clear(engine);
+    
+}
+
+
+// Agregar las funciones de control de estado
+function startGame() {
+  
+    console.log('startGame function called');
+    currentState = GAME_STATE.PLAYING;
+    startButton.hide();
+    gameStarted = true;
+    score = 0;
+    currentState = GAME_STATE.PLAYING;
+    startButton.hide();
+    gameStarted = true;
+    score = 0;
+    
+    // Inicializar el mundo del juego
+    setupGameWorld();
+}
+
+function setupGameWorld() {
+    // Código original de inicialización
     World.add(world, mc);
-    
     ground = new Ground(width/2, height-10, width, 20, groundImg);
-    
     createMap();
     createPigs();
-  
     createInitialBirds();
+  
   Events.on(engine, 'collisionStart', function(event) {
     event.pairs.forEach((pair) => {
         const bodyA = pair.bodyA;
@@ -100,7 +151,164 @@ function setup() {
         }
     });
 });
+  
 }
+
+function restartGame() {
+    // Limpiar el mundo
+    World.clear(world);
+    Engine.clear(engine);
+    
+    // Reiniciar variables
+    objects = [];
+    birds = [];
+    pigs = [];
+    score = 0;
+    currentState = GAME_STATE.PLAYING;
+    levelCompleted = false;
+    restartButton.hide();
+    
+    // Reinicializar el mundo
+    setupGameWorld();
+}
+
+function checkGameOver() {
+    // Verificar si se acabaron los pájaros y hay cerdos vivos
+    if (birds.length === 0 && pigs.length > 0) {
+        currentState = GAME_STATE.GAME_OVER;
+        finalScore = score;
+        restartButton.show();
+        levelCompleted = false;
+    }
+    // Verificar si se eliminaron todos los cerdos
+    else if (pigs.length === 0) {
+        currentState = GAME_STATE.GAME_OVER;
+        finalScore = score;
+        restartButton.show();
+        levelCompleted = true;
+    }
+}
+
+// Modificar la función draw()
+function draw() {
+    switch(currentState) {
+        case GAME_STATE.START:
+            drawStartScreen();
+            break;
+        case GAME_STATE.PLAYING:
+            drawGameScreen();
+            checkGameOver();
+            break;
+        case GAME_STATE.GAME_OVER:
+            drawGameOverScreen();
+            break;
+    }
+}
+
+function drawStartScreen() {
+    push();
+    background(backgroundImg);
+    textAlign(CENTER, CENTER);
+    textSize(48);
+    fill(255);
+    stroke(0);
+    strokeWeight(4);
+    text('Angry Birds Clone', width/2, height/3);
+    
+    textSize(24);
+    text('Use the slingshot to destroy all the pigs!', width/2, height/2);
+    pop();
+}
+
+function drawGameScreen() {
+    imageMode(CORNER);
+    image(backgroundImg, 0, 0, width, height);
+    Engine.update(engine);
+    
+    if (isBirdDead()) {
+        nextBird();
+    }
+    
+    if (!isLaunched) {
+        updateWaitingBirds();
+    }
+    
+    // Dibujar puntos de trayectoria
+    if (mc.mouse.button === 0 && slingshot.sling.bodyB) {
+        trajectoryPoints = calculateTrajectoryPoints(currentBird, slingshot);
+    } else if (!slingshot.sling.bodyB) {
+        trajectoryPoints = [];
+    }
+    
+    push();
+    fill(255);
+    noStroke();
+    for (let point of trajectoryPoints) {
+        ellipse(point.x, point.y, 4, 4);
+    }
+    pop();
+    
+    // Mostrar elementos del juego
+    slingshot.fly(mc);
+    for (const box of objects) box.show();
+    for (const pig of pigs) pig.show();
+    slingshot.show();
+    for (const bird of birds) bird.show();
+    ground.show();
+    
+    // Mostrar score y pájaros restantes
+    push();
+    fill(255);
+    textSize(24);
+    textAlign(RIGHT);
+    text(`Score: ${score}`, width - 20, 40);
+
+    pop();
+}
+
+function drawGameOverScreen() {
+    push();
+
+    textAlign(CENTER, CENTER);
+    textSize(48);
+    fill(255);
+    stroke(0);
+    strokeWeight(4);
+    
+    if (levelCompleted) {
+        text('Level Complete!', width/2, height/3);
+    } else {
+        text('Game Over', width/2, height/3);
+    }
+    
+    textSize(32);
+    text(`Final Score: ${finalScore}`, width/2, height/2);
+    pop();
+}
+
+// Agregar estilos CSS al documento HTML
+const styles = document.createElement('style');
+styles.textContent = `
+    .game-button {
+        padding: 10px 20px;
+        font-size: 18px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    
+    .game-button:hover {
+        background-color: #45a049;
+    }
+`;
+document.head.appendChild(styles);
+
+
+
+
 function createPigs() {
     // Añadir cerdos en diferentes posiciones
     pigs.push(new Pig(500, height - 235, 12, pigImg));
@@ -216,56 +424,6 @@ function updateWaitingBirds() {
     }
 }
 
-
-function draw() {
-    imageMode(CORNER);
-    image(backgroundImg, 0, 0, width, height);
-    Engine.update(engine);
-    
-    if (isBirdDead()) {
-        nextBird();
-    }
-    
-    if (!isLaunched) {
-        updateWaitingBirds();
-    }
-        // Update trajectory points only when pulling slingshot
-  if (mc.mouse.button === 0 && slingshot.sling.bodyB) {
-    trajectoryPoints = calculateTrajectoryPoints(currentBird, slingshot);
-  } else if (!slingshot.sling.bodyB) {
-    trajectoryPoints = []; // Clear points when bird is launched
-  }
-  
-  // Draw trajectory points
-  push();
-  fill(255);
-  noStroke();
-  for (let point of trajectoryPoints) {
-    ellipse(point.x, point.y, 4, 4);
-  }
-  pop();
-    
-    slingshot.fly(mc);
-    
-    for (const box of objects){
-        box.show();
-    }
-    for (const pig of pigs) {
-        pig.show();
-    }
-    slingshot.show();
-    for (const bird of birds) {
-        bird.show();
-    }
-    
-    ground.show();
-    push();
-    fill(255);
-    textSize(24);
-    textAlign(RIGHT);
-    text(`Score: ${score}`, width - 20, 40);
-    pop();
-}
 
 function calculateTrajectoryPoints(bird, sling) {
   if (!sling.sling.bodyB) return []; // Return empty array if bird is launched
