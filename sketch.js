@@ -1,6 +1,9 @@
 const {Engine, World, Bodies, Mouse, MouseConstraint, Body, Constraint, Events} = Matter;
 
-let engine, world, ground, objects = [], boxImg, wood2Img, stoneImg, groundImg;
+
+  bird, birdImg = [], slingshot,
+  mc, backgroundImg, slingshotImg;
+let engine, world, ground, objects = [], boxImg, wood2Img, stoneImg, groundImg, starImg;
 let birds = [];
 let currentBird;
 let birdImg = [];
@@ -9,8 +12,10 @@ let trajectoryPoints = [];
 
 let pigs = [];
 let pigImg;
-let starImg;
 let score = 0;
+let birdsCount = 0;
+let totalBirds = 4;
+let isGameOver = false;
 let width = 800;
 let height = 500;
 let slingshot;
@@ -37,13 +42,13 @@ function setup() {
     const canvas = createCanvas(width,height);
   
     
-    // Load images
     boxImg = loadImage("img/wood1.png");
     wood2Img = loadImage("img/wood2.png");
     stoneImg = loadImage("img/stone.png");
     groundImg = loadImage("img/ground3.png");
     backgroundImg = loadImage("img/background2.jpg");
     slingshotImg = loadImage("img/slingshot.png");
+    starImg = loadImage("img/star.png");
     birdImg = [
         loadImage("img/red.png"),
         loadImage("img/yellow.png"),
@@ -340,19 +345,24 @@ function createPigs() {
 }
 
 function createMap() {
+  objects= [];
   objects.push(new Box( 380, height - 40, 40, 40, boxImg));
   objects.push(new Box( 620, height - 40, 40, 40, boxImg));
   objects.push(new Box( 500, height - 40, 40, 40, boxImg));
   objects.push(new Box( 580, height - 50, 150, 10, wood2Img)); 
   objects.push(new Box( 420, height - 50, 150, 10, wood2Img)); 
-  objects.push(new Box( 430, height - 90, 40, 40, stoneImg)); 
-  objects.push(new Box( 570, height - 90, 40, 40, stoneImg)); 
-  objects.push(new Box( 350, height - 90, 10, 40, stoneImg));
-  objects.push(new Box( 650, height - 90, 10, 40, stoneImg));
+
+  objects.push(new Stone( 430, height - 90, 40, 40, stoneImg)); 
+  objects.push(new Stone( 570, height - 90, 40, 40, stoneImg)); 
+  objects.push(new Stone( 350, height - 90, 10, 40, stoneImg));
+  objects.push(new Stone( 650, height - 90, 10, 40, stoneImg));
+
   objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
   objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
-  objects.push(new Box( 430, height - 160, 20, 70, stoneImg)); 
-  objects.push(new Box( 570, height - 160, 20, 70, stoneImg));
+
+  objects.push(new Stone( 430, height - 160, 20, 70, stoneImg)); 
+  objects.push(new Stone( 570, height - 160, 20, 70, stoneImg));
+
   objects.push(new Box( 500, height - 180, 170, 10, wood2Img));
   objects.push(new Box( 430, height - 220, 40, 40, boxImg)); 
   objects.push(new Box( 570, height - 220, 40, 40, boxImg)); 
@@ -576,7 +586,11 @@ class Box {
   }
   
 }
-
+class Stone extends Box {
+  constructor(x,y,w,h,img){
+    super(x,y,w,h, img);
+  }
+}
 class Ground extends Box {
   constructor(x,y,w,h,img){
     super(x,y,w,h, img,
