@@ -12,8 +12,8 @@ let pigs = [];
 let pigImg;
 let score = 0;
 let isGameOver = false;
-let width = 800;
-let height = 500;
+let width = 1200; // Aumentado de 800
+let height = 600; // Aumentado de 500
 let isLaunched = false;
 let waitingPositions;
 
@@ -22,7 +22,7 @@ let soundBirdCollision;
 let soundPigCollision;
 let soundBirdFlying;
 let activeSounds = {};
-
+let floatingScores = [];
 let boxSprites = {
     box: [],
     wood: [],
@@ -41,12 +41,19 @@ let gameStarted = false;
 let startButton;
 let restartButton;
 let levelCompleted = false;
+let starAnimations = [];
+let restartIcon;
+let startIcon;
 
 function preload() {
     soundBox = loadSound('sound/wood_collision.wav');  // Sonido para la caja
     soundBirdCollision = loadSound('sound/bird_collision.wav');  // Sonido para el pájaro
     soundPigCollision = loadSound('sound/piglette_collision.wav'); 
-    soundBirdFlying = loadSound('sound/bird_flying.wav')
+    soundBirdFlying = loadSound('sound/bird_flying.wav'); 
+    restartIcon = loadImage("img/restart.png");
+    startIcon = loadImage("img/start.png");
+    splashImg = loadImage("img/splashScreen.png");
+  
 }
 function setup() {
     const canvas = createCanvas(width,height);
@@ -60,7 +67,6 @@ function setup() {
     boxSprites.wood.push(loadImage("img/wood2_v2.png"));
     groundImg = loadImage("img/ground3.png");
     backgroundImg = loadImage("img/background2.jpg");
-    splashImg = loadImage("img/splashScreen.png");
     slingshotImg = loadImage("img/slingshot.png");
     birdImg = [
         loadImage("img/red.png"),
@@ -73,13 +79,15 @@ function setup() {
     deadBirdImg = loadImage("img/deadBird.png");
     damagedPigImg = loadImage("img/damagedPig.png");
     veryDamagedPigImg = loadImage("img/veryDamagedPig.png");
+  
     // Initialize positions after canvas is created
     waitingPositions = [
-        {x: 50, y: height - 20},
-        {x: 10, y: height - 20},
-        {x: 150, y: height - 70}
-    ];
+    {x: 140, y: height - 20},  // Ajustado desde 50
+    {x: 80, y: height - 20},  // Ajustado desde 10
+    {x: 250, y: height - 170}  // Ajustado desde 150
+];
     
+    floatingScores = [];
     engine = Engine.create();
     world = engine.world;
     
@@ -90,40 +98,36 @@ function setup() {
         collisionFilter: {mask: 2}
     });
   
-    startButton = createButton('Start Game');
-    startButton.position(width/2 -70 , height/2 + 150)
-    startButton.mousePressed(startGame);
-    startButton.class('game-button');
-    
-    restartButton = createButton('Play Again');
-    restartButton.position(width/2 - 55, height/2 + 120);
-    restartButton.mousePressed(restartGame);
-    restartButton.class('game-button');
-    restartButton.hide();
-  let render = Render.create({
-    element: document.body,
-    engine: engine,
-    options: {
-      width: 800,
-      height: 600,
-      wireframes: false // Para renderizado más realista
-    }
-  });
-
-  Render.run(render);
+  
     // Inicialmente ocultar el mundo del juego
     World.clear(world);
     Engine.clear(engine);
     
 }
-
-
+function mousePressed() {
+        const buttonSize = 80;
+        const panelHeight = 400;
+        const panelY = height/2 - panelHeight/2;
+        const buttonY = panelY + 320;
+    if (currentState === GAME_STATE.GAME_OVER) {
+        
+        if (dist(mouseX, mouseY, width/2, buttonY) < buttonSize/2) {
+            starAnimations = [];
+            restartGame();
+        }
+    }
+    else if (currentState === GAME_STATE.START) {
+      if (dist(mouseX, mouseY, width/2, buttonY) < buttonSize/2) {
+            startGame();
+        }
+        
+    }
+  
+}
 // Agregar las funciones de control de estado
 function startGame() {
   
-    console.log('startGame function called');
     currentState = GAME_STATE.PLAYING;
-    startButton.hide();
     gameStarted = true;
     score = 0;
   
@@ -132,7 +136,7 @@ function startGame() {
 }
 
 function getStarsForScore(score) {
-    if (score > 2000) return 3;
+    if (score > 2500) return 3;
     if (score > 1000) return 2;
     return 1;
 }
@@ -223,8 +227,8 @@ function restartGame() {
     isLaunched = false;  // Añadir esta línea
     currentState = GAME_STATE.PLAYING;
     levelCompleted = false;
-    restartButton.hide();
     
+    floatingScores = [];
     // Reinicializar el mundo
     setupGameWorld();
 }
@@ -234,14 +238,12 @@ function checkGameOver() {
     if (birds.length === 0 && pigs.length > 0) {
         currentState = GAME_STATE.GAME_OVER;
         finalScore = score;
-        restartButton.show();
         levelCompleted = false;
     }
     // Verificar si se eliminaron todos los cerdos
     else if (pigs.length === 0) {
         currentState = GAME_STATE.GAME_OVER;
         finalScore = score;
-        restartButton.show();
         levelCompleted = true;
     }
 }
@@ -268,6 +270,8 @@ function draw() {
 function drawStartScreen() {
     push();
     background(splashImg);
+  
+    drawRestartButton(width/2,  450, startIcon );
     pop();
 }
 
@@ -276,8 +280,11 @@ function drawGameScreen() {
     image(backgroundImg, 0, 0, width, height);
     Engine.update(engine);
 
-    if (isBirdDead()) {
-      
+    // Verificar si el pájaro actual está muerto
+    isBirdDead();
+
+    // Solo llamar a nextBird si la animación de muerte ha terminado
+    if (currentBird && currentBird.isDying && currentBird.deathFrame >= currentBird.maxDeathFrames) {
         nextBird();
     }
 
@@ -291,7 +298,10 @@ function drawGameScreen() {
     } else if (!slingshot.sling.bodyB) {
         trajectoryPoints = [];
     }
-
+        floatingScores = floatingScores.filter(score => {
+        score.show();
+        return score.update();
+    });
     push();
     fill(255);
     noStroke();
@@ -303,9 +313,9 @@ function drawGameScreen() {
     // Mostrar elementos del juego
     slingshot.fly(mc);
     for (const box of objects) {
-      if (box.life > 0){
-          box.show();
-          }
+        if (box.life > 0) {
+            box.show();
+        }
     }
     for (const pig of pigs) pig.show();
     slingshot.show();
@@ -313,7 +323,7 @@ function drawGameScreen() {
     ground.show();
 
     // Mostrar score y pájaros restantes
-    displayScoreAndStars(score)
+    displayScoreAndStars(score);
 }
 
 function displayScoreAndStars(score) {
@@ -338,30 +348,97 @@ function displayScoreAndStars(score) {
 
 function drawGameOverScreen() {
     push();
+    imageMode(CORNER);
+    image(backgroundImg, 0, 0, width, height);
+    Engine.update(engine);
+
+    // Panel central con fondo azul claro semitransparente
+    const panelWidth = 500;
+    const panelHeight = 400;
+    const panelX = width/2 - panelWidth/2;
+    const panelY = height/2 - panelHeight/2;
+    
+    // Sombra del panel
+    fill(0, 20);
+    noStroke();
+    rect(panelX + 5, panelY + 5, panelWidth, panelHeight, 20);
+    
+    // Panel principal
+    fill(135, 206, 235, 200); // Azul claro semitransparente
+    stroke(255, 100);
+    strokeWeight(2);
+    rect(panelX, panelY, panelWidth, panelHeight, 20);
+    
+    // Título
     textAlign(CENTER, CENTER);
     textSize(48);
     fill(255);
-
+    noStroke();
     if (levelCompleted) {
-        text('Level Complete!', width / 2, height / 3);
-      
-        // Mostrar estrellas según la puntuación
-        const stars = getStarsForScore(finalScore);
-        let starX = width / 2 - 50;
-        for (let i = 0; i < stars; i++) {
-            image(starImg, starX + i * 60, height / 2 + 40, 40, 40);  // Asegúrate de cargar la imagen de la estrella
+        text('Level Complete!', width/2, panelY + 80);
+        
+        // Inicializar animaciones de estrellas si es necesario
+        if (starAnimations.length === 0) {
+            const stars = getStarsForScore(finalScore);
+            const starY = panelY + 180;
+            const spacing = 100; // Más espacio entre estrellas
+            
+            for (let i = 0; i < stars; i++) {
+                const starX = width/2 - 20 + (i - Math.floor(stars/2)) * spacing;
+                starAnimations.push(new StarAnimation(starX, starY, i * 10));
+            }
         }
+        
+        // Actualizar y mostrar animaciones de estrellas
+        starAnimations.forEach(star => {
+            star.update();
+            star.show();
+        });
     } else {
-        text('Game Over', width / 2, height / 3);
+        text('Game Over', width/2, panelY + 80);
     }
 
+    // Puntuación
     textSize(32);
-    text(`Final Score: ${finalScore}`, width / 2, height / 2);
+    fill(255);
+    text(`Final Score: ${finalScore}`, width/2, panelY + 150);
 
-
+    // Botón de reinicio más grande
+    drawRestartButton(width/2, panelY + 320, restartIcon );
+    
     pop();
 }
 
+function drawRestartButton(x, y, img) {
+    const buttonSize = 80; // Botón más grande
+    
+    push();
+    // Sombra del botón
+    fill(0, 100);
+    noStroke();
+    ellipse(x + 2, y + 2, buttonSize + 4);
+    
+    // Fondo del botón
+    fill(76, 175, 80); // Verde material design
+    stroke(255, 50);
+    strokeWeight(2);
+    ellipse(x, y, buttonSize);
+    
+    // Efecto hover
+    if (dist(mouseX, mouseY, x, y) < buttonSize/2) {
+        fill(255, 50);
+        ellipse(x, y, buttonSize);
+        cursor(HAND);
+    } else {
+        cursor(ARROW);
+    }
+    
+    // Ícono de reinicio
+    imageMode(CENTER);
+    tint(255);
+    image(img, x, y, buttonSize, buttonSize);
+    pop();
+}
 
 // Agregar estilos CSS al documento HTML
 const styles = document.createElement('style');
@@ -387,37 +464,45 @@ document.head.appendChild(styles);
 
 
 function createPigs() {
-    // Añadir cerdos en diferentes posiciones
-    pigs.push(new Pig(500, height - 235, 12, pigImg));
-    pigs.push(new Pig(380, height - 87, 10, pigImg));
-    pigs.push(new Pig(500, height - 145, 12, pigImg));
-    pigs.push(new Pig(500, height - 87, 9, pigImg));
-    pigs.push(new Pig(620, height - 87, 10, pigImg));
+    // Mover los cerdos más a la derecha
+    pigs.push(new Pig(800, height - 235, 12, pigImg));      // Cerdo superior
+    pigs.push(new Pig(680, height - 87, 10, pigImg));       // Cerdo inferior izquierdo
+    pigs.push(new Pig(800, height - 145, 12, pigImg));      // Cerdo medio
+    pigs.push(new Pig(800, height - 87, 9, pigImg));        // Cerdo inferior centro
+    pigs.push(new Pig(920, height - 87, 10, pigImg));       // Cerdo inferior derecho
 }
 
 function createMap() {
-  objects= [];
-  objects.push(new Box( 380, height - 40, 40, 40,'box'));
-  objects.push(new Box( 620, height - 40, 40, 40, 'box'));
-  objects.push(new Box( 500, height - 40, 40, 40, 'box'));
-  objects.push(new Box( 580, height - 50, 150, 10, 'wood')); 
-  objects.push(new Box( 420, height - 50, 150, 10, 'wood')); 
+    objects = [];
+    // Primera fila (base)
+    objects.push(new Box(680, height - 40, 40, 40, 'box'));
+    objects.push(new Box(920, height - 40, 40, 40, 'box'));
+    objects.push(new Box(800, height - 40, 40, 40, 'box'));
+    
+    // Vigas de madera horizontales inferiores
+    objects.push(new Box(880, height - 50, 150, 10, 'wood')); 
+    objects.push(new Box(720, height - 50, 150, 10, 'wood')); 
 
-  objects.push(new Box( 430, height - 90, 40, 40, 'stone')); 
-  objects.push(new Box( 570, height - 90, 40, 40, 'stone')); 
-  objects.push(new Box( 350, height - 90, 10, 40, 'stone'));
-  objects.push(new Box( 650, height - 90, 10, 40, 'stone'));
+    // Segunda fila (piedras)
+    objects.push(new Box(730, height - 90, 40, 40, 'stone')); 
+    objects.push(new Box(870, height - 90, 40, 40, 'stone')); 
+    objects.push(new Box(650, height - 90, 10, 40, 'stone'));
+    objects.push(new Box(950, height - 90, 10, 40, 'stone'));
 
-  objects.push(new Box( 500, height - 100, 200, 10, 'wood'));
-  objects.push(new Box( 500, height - 100, 200, 10, 'wood'));
+    // Viga de madera horizontal media
+    objects.push(new Box(800, height - 100, 200, 10, 'wood'));
+    objects.push(new Box(800, height - 100, 200, 10, 'wood'));
 
-  objects.push(new Box( 430, height - 160, 20, 70, 'stone')); 
-  objects.push(new Box( 570, height - 160, 20, 70, 'stone'));
+    // Columnas de piedra
+    objects.push(new Box(730, height - 160, 20, 70, 'stone')); 
+    objects.push(new Box(870, height - 160, 20, 70, 'stone'));
 
-  objects.push(new Box( 500, height - 180, 170, 10, 'wood'));
-  objects.push(new Box( 430, height - 220, 40, 40, 'box')); 
-  objects.push(new Box( 570, height - 220, 40, 40, 'box')); 
-  
+    // Viga superior
+    objects.push(new Box(800, height - 180, 170, 10, 'wood'));
+    
+    // Cajas superiores
+    objects.push(new Box(730, height - 220, 40, 40, 'box')); 
+    objects.push(new Box(870, height - 220, 40, 40, 'box')); 
 }
 
 function createInitialBirds() {
@@ -425,7 +510,7 @@ function createInitialBirds() {
     birds = [];
     
     // Crear el primer pájaro para el slingshot
-    let firstBird = new Bird(150, height - 70, 14, birdImg[0]);
+    let firstBird = new Bird(250, height - 70, 14, birdImg[0]);
     birds.push(firstBird);
     currentBird = firstBird;
 
@@ -443,14 +528,14 @@ function createInitialBirds() {
 
 
 function isBirdDead() {
-    if (!currentBird || !isLaunched) return false;
+    if (!currentBird || !isLaunched || currentBird.isDying) return false;
     
     // Check if bird is off screen with larger margin
     if (currentBird.body.position.x > width + 100 || 
         currentBird.body.position.x < -100 || 
         currentBird.body.position.y > height + 100) {
-      
-        return true;
+        currentBird.die();
+        return false; // Cambiado a false para que nextBird() no se llame inmediatamente
     }
     
     // Check if bird has been still for some time
@@ -459,28 +544,36 @@ function isBirdDead() {
         currentBird.body.velocity.y ** 2
     );
     
-    return speed < 0.5 && isLaunched;
+    if (speed < 0.5 && isLaunched) {
+        currentBird.die();
+        return false; // Cambiado a false para que nextBird() no se llame inmediatamente
+    }
+    
+    return false;
 }
 
 function nextBird() {
-    // Remove current bird
-    if (currentBird) {
-        World.remove(world, currentBird.body);
-        birds = birds.filter(b => b !== currentBird);
-    }
-    
-    // Set up next bird
-    if (birds.length > 0) {
-        currentBird = birds[0];
+    // Solo cambiamos al siguiente pájaro si el actual ha completado su animación de muerte
+    if (currentBird && (!currentBird.isDying || currentBird.deathFrame >= currentBird.maxDeathFrames)) {
+        // Remove current bird from world and array
+        if (currentBird) {
+            World.remove(world, currentBird.body);
+            birds = birds.filter(b => b !== currentBird);
+        }
         
-        Body.setPosition(currentBird.body, {
-            x: 150,  // Slingshot x position
-            y: 225   // Slingshot y position
-        });
-        Body.setVelocity(currentBird.body, {x: 0, y: 0});
-        Body.setAngularVelocity(currentBird.body, 0);
-        slingshot.attach(currentBird);
-        isLaunched = false;
+        // Set up next bird
+        if (birds.length > 0) {
+            currentBird = birds[0];
+            
+            Body.setPosition(currentBird.body, {
+                x: 250,  // Slingshot x position
+                y: height - 70   // Slingshot y position
+            });
+            Body.setVelocity(currentBird.body, {x: 0, y: 0});
+            Body.setAngularVelocity(currentBird.body, 0);
+            slingshot.attach(currentBird);
+            isLaunched = false;
+        }
     }
 }
 
@@ -555,11 +648,14 @@ class Bird {
     });
     Body.setMass(this.body, 4);
     this.normalImg = img;
-    this.deadImg = loadImage("img/deadBird.png"); // Necesitarás crear esta imagen
+    // Asegurarse de que deadBirdImg esté definido como variable global
+    this.deadImg = deadBirdImg; // Imagen del pájaro muerto
     this.r = r;
     this.isDying = false;
     this.deathFrame = 0;
-    this.maxDeathFrames = 15;
+    this.maxDeathFrames = 30;
+    this.originalPosition = null;
+    this.opacity = 255;
     World.add(world, this.body);
   }
 
@@ -570,11 +666,29 @@ class Bird {
     rotate(this.body.angle);
 
     if (this.isDying) {
+      if (!this.originalPosition) {
+        this.originalPosition = {
+          x: this.body.position.x,
+          y: this.body.position.y,
+          angle: this.body.angle
+        };
+      }
+
+      // Calcula la opacidad
+      this.opacity = map(this.deathFrame, 0, this.maxDeathFrames, 255, 0);
+      
+      // Aplica la transparencia
+      tint(255, this.opacity);
+
+      // Asegúrate de que la imagen esté cargada antes de mostrarla
+      if (this.deadImg) {
+        image(this.deadImg, 0, 0, 2.5 * this.r, 2.5 * this.r); // Aumenté ligeramente el tamaño
+      }
+      
       this.deathFrame++;
-      // Usar imagen de pájaro muerto
-      image(this.deadImg, 0, 0, 2 * this.r, 2 * this.r);
+      
       if (this.deathFrame >= this.maxDeathFrames) {
-        this.clear();
+        this.remove();
       }
     } else {
       image(this.normalImg, 0, 0, 2 * this.r, 2 * this.r);
@@ -583,11 +697,15 @@ class Bird {
   }
 
   die() {
-    this.isDying = true;
+    if (!this.isDying) {
+      this.isDying = true;
+      this.deathFrame = 0;
+      // Mantener la posición actual cuando muere
+      Body.setStatic(this.body, true);
+    }
   }
 
-  clear() {
-    die();
+  remove() {
     World.remove(world, this.body);
   }
 }
@@ -615,17 +733,21 @@ class Box {
       this.body);
   }
 
-  reduceLife(impactForce) {
-        const damage = impactForce; // Reducir el daño para hacer el juego más balanceado
+    reduceLife(impactForce) {
+        const damage = impactForce;
         this.life -= damage;
         this.isDamaged = true;
-        if (this.life <=50){
+        if (this.life <= 50) {
             this.spriteIndex = 1;
         }
-        // Efectos visuales adicionales basados en la vida
         if (this.life <= 0) {
-            // Aquí podrías agregar efectos de partículas o animación de destrucción
             score += this.points;
+            // Crear un nuevo punto flotante
+            floatingScores.push(new FloatingScore(
+                this.body.position.x,
+                this.body.position.y,
+                this.points
+            ));
             World.remove(world, this.body);
             return true;
         }
@@ -660,13 +782,13 @@ class Ground extends Box {
 class SlingShot {
     constructor(bird) {
         this.sling = Constraint.create({
-          pointA: {x: 150, y: height - 70},
+          pointA: {x: 250, y: height - 70},
             bodyB: bird.body,
             stiffness: 0.1,
             length: 0
         });
         
-        this.slingshotPosition = {x: 150, y: height - 47};
+        this.slingshotPosition = {x: 250, y: height - 47};
         this.slingshotWidth = 24;
         this.slingshotHeight = 62;
         
@@ -717,24 +839,40 @@ class SlingShot {
 }
 
 class Pig {
-  constructor(x, y, r, img) {
-    this.body = Bodies.circle(x, y, 1.9*r, {
-      restitution: 0.1,
-      collisionFilter: {
-        category: 1
-      }
-    });
-    this.r = r;
-    this.normalImg = img;
-    // Cargar imágenes para diferentes estados de daño
-    this.damagedImg = loadImage("img/damagedPig.png"); // Cerdo con daño medio
-    this.veryDamagedImg = loadImage("img/veryDamagedPig.png"); // Cerdo muy dañado
-    this.life = 100;
-    this.points = 500;
-    World.add(world, this.body);
-  }
+    constructor(x, y, r, img) {
+        this.body = Bodies.circle(x, y, 1.9*r, {
+            restitution: 0.1,
+            collisionFilter: {
+                category: 1
+            }
+        });
+        this.r = r;
+        this.normalImg = img;
+        this.damagedImg = loadImage("img/damagedPig.png");
+        this.veryDamagedImg = loadImage("img/veryDamagedPig.png");
+        this.life = 100;
+        this.points = 500;
+        World.add(world, this.body);
+    }
 
-  show() {
+    reduceLife(impactForce) {
+        const damage = impactForce * 3;
+        this.life -= damage;
+
+        if (this.life <= 0) {
+            score += this.points;
+            // Crear un nuevo punto flotante
+            floatingScores.push(new FloatingScore(
+                this.body.position.x,
+                this.body.position.y,
+                this.points
+            ));
+            World.remove(world, this.body);
+            return true;
+        }
+        return false;
+    }
+    show() {
     push();
     imageMode(CENTER);
     translate(this.body.position.x, this.body.position.y);
@@ -753,16 +891,79 @@ class Pig {
     image(currentImg, 0, 0, 4 * this.r, 4 * this.r);
     pop();
   }
+}
 
-  reduceLife(impactForce) {
-    const damage = impactForce * 3;
-    this.life -= damage;
 
-    if (this.life <= 0) {
-      score += this.points;
-      World.remove(world, this.body);
-      return true;
+class StarAnimation {
+    constructor(x, y, delay) {
+        this.x = x;
+        this.y = y;
+        this.scale = 0;
+        this.opacity = 0;
+        this.delay = delay;
+        this.active = false;
+        this.rotation = 0;
+        this.finalScale = 1.2; // Estrellas más grandes
     }
-    return false;
-  }
+
+    update() {
+        if (this.delay > 0) {
+            this.delay--;
+            return;
+        }
+        
+        if (!this.active) {
+            this.active = true;
+        }
+
+        if (this.scale < this.finalScale) {
+            this.scale += 0.15;
+        }
+        
+        if (this.opacity < 255) {
+            this.opacity += 25;
+        }
+        
+        //this.rotation += 0.1;
+    }
+
+    show() {
+        if (!this.active) return;
+        
+        push();
+        translate(this.x, this.y);
+        rotate(this.rotation);
+        tint(255, this.opacity);
+        image(starImg, 0, 0, 60 * this.scale, 60 * this.scale); // Estrellas más grandes (60px)
+        pop();
+    }
+}
+
+class FloatingScore {
+    constructor(x, y, points) {
+        this.x = x;
+        this.y = y;
+        this.points = points;
+        this.opacity = 255;
+        this.lifetime = 60; // Duración en frames
+        this.velocity = -2; // Velocidad de ascenso
+    }
+
+    update() {
+        this.y += this.velocity;
+        this.opacity -= 255 / this.lifetime;
+        this.lifetime--;
+        return this.lifetime > 0;
+    }
+
+    show() {
+        push();
+        textAlign(CENTER);
+        textSize(20);
+        fill(255, 255, 255, this.opacity);
+        stroke(0, 0, 0, this.opacity);
+        strokeWeight(2);
+        text(`+${this.points}`, this.x, this.y);
+        pop();
+    }
 }
