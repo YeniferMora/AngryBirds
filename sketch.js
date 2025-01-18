@@ -11,8 +11,6 @@ let trajectoryPoints = [];
 let pigs = [];
 let pigImg;
 let score = 0;
-let birdsCount = 0;
-let totalBirds = 4;
 let isGameOver = false;
 let width = 800;
 let height = 500;
@@ -43,7 +41,6 @@ function setup() {
     groundImg = loadImage("img/ground3.png");
     backgroundImg = loadImage("img/background2.jpg");
     slingshotImg = loadImage("img/slingshot.png");
-    starImg = loadImage("img/star.png");
     birdImg = [
         loadImage("img/red.png"),
         loadImage("img/yellow.png"),
@@ -79,7 +76,7 @@ function setup() {
     restartButton.mousePressed(restartGame);
     restartButton.class('game-button');
     restartButton.hide();
-    
+
     // Inicialmente ocultar el mundo del juego
     World.clear(world);
     Engine.clear(engine);
@@ -117,49 +114,50 @@ function setupGameWorld() {
     createMap();
     createPigs();
     createInitialBirds();
-  
-  Events.on(engine, 'collisionStart', function(event) {
-    event.pairs.forEach((pair) => {
-        const bodyA = pair.bodyA;
-        const bodyB = pair.bodyB;
-        
-        // Calculamos la fuerza del impacto
-        const impactForce = Math.sqrt(
-            Math.pow(bodyA.velocity.x - bodyB.velocity.x, 2) +
-            Math.pow(bodyA.velocity.y - bodyB.velocity.y, 2)
-        ) * Math.max(bodyA.mass, bodyB.mass);
-        
-        // Buscamos si alguno de los cuerpos es un cerdo
-        const pigA = pigs.find(p => p.body === bodyA);
-        const pigB = pigs.find(p => p.body === bodyB);
-        const birdA = birds.find(p => p.body === bodyA);        
-      const birdB = birds.find(p => p.body === bodyB);
-        // Si encontramos un cerdo, reducimos su vida basado en la fuerza del impacto
-        if (pigA ) {
-            if (pigA.reduceLife(impactForce * 0.5)) {
-                pigs = pigs.filter(p => p !== pigA);
+    Events.on(engine, 'collisionStart', function(event) {
+        event.pairs.forEach((pair) => {
+            
+            const bodyA = pair.bodyA;
+            const bodyB = pair.bodyB;
+            
+            // Calculamos la fuerza del impacto
+            const impactForce = Math.sqrt(
+                Math.pow(bodyA.velocity.x - bodyB.velocity.x, 2) +
+                Math.pow(bodyA.velocity.y - bodyB.velocity.y, 2)
+            ) * Math.max(bodyA.mass, bodyB.mass);
+            
+            // Buscamos si alguno de los cuerpos es un cerdo
+            const pigA = pigs.find(p => p.body === bodyA);
+            const pigB = pigs.find(p => p.body === bodyB);
+            const birdA = birds.find(p => p.body === bodyA);        
+            const birdB = birds.find(p => p.body === bodyB);
+            // Si encontramos un cerdo, reducimos su vida basado en la fuerza del impacto
+            if (pigA ) {
+                if (pigA.reduceLife(impactForce * 0.5)) {
+                    pigs = pigs.filter(p => p !== pigA);
+                }
             }
-        }
-        
-        if (pigB) {
-            if (pigB.reduceLife(impactForce * 0.5)) {
-                pigs = pigs.filter(p => p !== pigB);
+            
+            if (pigB  ) {
+                if (pigB.reduceLife(impactForce * 0.5)) {
+                    pigs = pigs.filter(p => p !== pigB);
+                }
             }
-        }
-      
-      
-        const boxA = objects.find(b => b.body === bodyA);
-        const boxB = objects.find(b => b.body === bodyB);
-              if (boxA && !pigB && !boxB) {
-             boxA.reduceLife(impactForce * 4)
-        }
-        if (boxB && !birdA  && !boxB) {
-            boxB.reduceLife(impactForce * 4)
-        }
+            
+            
+            const boxA = objects.find(b => b.body === bodyA);
+            const boxB = objects.find(b => b.body === bodyB);
+            if (boxA && !pigB && !boxB) {
+                
+                boxA.reduceLife(impactForce * 4)
+            }
+        });
     });
-});
+    
   
 }
+
+
 
 function restartGame() {
     // Limpiar el mundo
@@ -267,16 +265,28 @@ function drawGameScreen() {
     ground.show();
 
     // Mostrar score y pájaros restantes
-    push();
-    fill(255);
-    textSize(24);
-    textAlign(RIGHT);
-    text(`Score: ${score}`, width - 20, 40);
-
-    pop();
+    displayScoreAndStars(score)
 }
 
+function displayScoreAndStars(score) {
+  const stars = getStarsForScore(score);
+  const starSize = 30;
+  const padding = 20; 
+  const xStart = width - padding - starSize; 
+  const yStart = padding;
 
+  push();
+  fill(255);
+  textSize(30);
+  textStyle(BOLD);
+  textAlign(RIGHT);
+  
+  text(`Score: ${score}`, width - padding, yStart+ 10);
+  for (let i = 0; i < stars; i++) {
+    image(starImg, xStart - i * (starSize + 5), yStart + 30, starSize, starSize);
+  }
+  pop();
+}
 
 function drawGameOverScreen() {
     push();
@@ -347,16 +357,16 @@ function createMap() {
   objects.push(new Box( 580, height - 50, 150, 10, wood2Img)); 
   objects.push(new Box( 420, height - 50, 150, 10, wood2Img)); 
 
-  objects.push(new Stone( 430, height - 90, 40, 40, stoneImg)); 
-  objects.push(new Stone( 570, height - 90, 40, 40, stoneImg)); 
-  objects.push(new Stone( 350, height - 90, 10, 40, stoneImg));
-  objects.push(new Stone( 650, height - 90, 10, 40, stoneImg));
+  objects.push(new Box( 430, height - 90, 40, 40, stoneImg)); 
+  objects.push(new Box( 570, height - 90, 40, 40, stoneImg)); 
+  objects.push(new Box( 350, height - 90, 10, 40, stoneImg));
+  objects.push(new Box( 650, height - 90, 10, 40, stoneImg));
 
   objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
   objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
 
-  objects.push(new Stone( 430, height - 160, 20, 70, stoneImg)); 
-  objects.push(new Stone( 570, height - 160, 20, 70, stoneImg));
+  objects.push(new Box( 430, height - 160, 20, 70, stoneImg)); 
+  objects.push(new Box( 570, height - 160, 20, 70, stoneImg));
 
   objects.push(new Box( 500, height - 180, 170, 10, wood2Img));
   objects.push(new Box( 430, height - 220, 40, 40, boxImg)); 
@@ -492,7 +502,7 @@ class Bird {
         restitution: 0.1,
         collisionFilter: {
           category: 2,
-          mask:3
+          mask: 1 | 3
         }
       }
     );
@@ -532,7 +542,8 @@ class Box {
   constructor(x, y, w, h,
     img, options={
     collisionFilter: {
-          category: 1
+          category: 1,
+          mask: 2 | 3
         }}){
       this.body =
         Bodies.rectangle(
@@ -567,33 +578,22 @@ class Box {
          this.body.position.y);
     rotate(this.body.angle);
     
-    if(this.img){
+    if(this.img && this.life>0){
       imageMode(CENTER);
       image(this.img,
             0,0,
             this.w, this.h);
-    } else {
-      rectMode(CENTER);
-      rect(0, 0,
-           this.w, this.h);      
     }
     pop();
   }
   
-}
-class Stone extends Box {
-  constructor(x,y,w,h,img){
-    super(x,y,w,h, img, {collisionFilter: {
-          category: 2,
-        }});
-  }
 }
 class Ground extends Box {
   constructor(x,y,w,h,img){
     super(x,y,w,h, img,
       {isStatic: true,
       collisionFilter: {
-          category: 2,
+          category: 3,
         }});
   }
 }
@@ -660,8 +660,8 @@ class Pig {
         this.body = Bodies.circle(x, y, r, {
             restitution: 0.1,
             collisionFilter: {
-                category: 1
-              
+                category: 1,           
+                mask: 2 | 3
             }
         });
         this.r = r;
@@ -686,9 +686,9 @@ class Pig {
         }
         
         // Ajustar el tamaño basado en la vida restante
-        const size = map(this.life, 0, 100, this.r * 0.5, this.r * 2);
-        image(this.img, 0, 0, size * 2, size * 2);
-        
+        // const size = map(this.life, 0, 100, this.r * 0.5, this.r * 2);
+        // image(this.img, 0, 0, size * 2, size * 2);
+        image(this.img,0,0, 2*this.body.circleRadius, 2*this.body.circleRadius);
         noTint(); // Resetear el tinte
         pop();
     }
