@@ -1,4 +1,4 @@
-const {Engine, World, Bodies, Mouse, MouseConstraint, Body, Constraint, Events} = Matter;
+const {Engine, World, Bodies, Mouse, MouseConstraint, Body, Constraint, Events, Render} = Matter;
 
 let bird, birdImg = [], slingshot,
   mc, backgroundImg, slingshotImg;
@@ -99,7 +99,17 @@ function setup() {
     restartButton.mousePressed(restartGame);
     restartButton.class('game-button');
     restartButton.hide();
+  let render = Render.create({
+    element: document.body,
+    engine: engine,
+    options: {
+      width: 800,
+      height: 600,
+      wireframes: false // Para renderizado más realista
+    }
+  });
 
+  Render.run(render);
     // Inicialmente ocultar el mundo del juego
     World.clear(world);
     Engine.clear(engine);
@@ -153,14 +163,14 @@ function setupGameWorld() {
             // Si encontramos un cerdo, reducimos su vida basado en la fuerza del impacto
             if (pigA ) {
                 soundPigCollision.play()
-                if (pigA.reduceLife(impactForce * 0.7)) {
+                if (pigA.reduceLife(impactForce * 0.5)) {
                     pigs = pigs.filter(p => p !== pigA);
                 }
             }
             
             if (pigB  ) {
                 soundPigCollision.play()
-                if (pigB.reduceLife(impactForce * 0.7)) {
+                if (pigB.reduceLife(impactForce * 0.5)) {
                     pigs = pigs.filter(p => p !== pigB);
                 }
             }
@@ -189,15 +199,17 @@ function setupGameWorld() {
 
 
 function restartGame() {
-    // Limpiar el mundo
+    // Limpiar el mundo físico
     World.clear(world);
     Engine.clear(engine);
     
-    // Reiniciar variables
+    // Limpiar todas las referencias y variables
     objects = [];
     birds = [];
     pigs = [];
     score = 0;
+    currentBird = null;  // Añadir esta línea
+    isLaunched = false;  // Añadir esta línea
     currentState = GAME_STATE.PLAYING;
     levelCompleted = false;
     restartButton.hide();
@@ -279,7 +291,11 @@ function drawGameScreen() {
 
     // Mostrar elementos del juego
     slingshot.fly(mc);
-    for (const box of objects) box.show();
+    for (const box of objects) {
+      if (box.life > 0){
+          box.show();
+          }
+    }
     for (const pig of pigs) pig.show();
     slingshot.show();
     for (const bird of birds) bird.show();
@@ -394,27 +410,26 @@ function createMap() {
 }
 
 function createInitialBirds() {
-    console.log("hey");
-    // First bird in slingshot
-    let firstBird = new Bird(150, height -70, 14, birdImg[0]);
-    birds.push(firstBird);
-    console.log("Birds push: ");
-    console.log(birds);
-    currentBird = firstBird;
+    // Limpiar el array de pájaros por si acaso
+    birds = [];
     
-    // Create waiting birds
-    for (let i = 0; i < 2; i++) {
-        let bird = new Bird(
-            waitingPositions[i].x,
-            waitingPositions[i].y,
-            14,
-            birdImg[(i + 1) % birdImg.length]
-        );
-        birds.push(bird);
-    }
-    updateWaitingBirds();
+    // Crear el primer pájaro para el slingshot
+    let firstBird = new Bird(150, height - 70, 14, birdImg[0]);
+    birds.push(firstBird);
+    currentBird = firstBird;
+
+    // Crear los dos pájaros en espera
+    let bird2 = new Bird(50, height - 20, 14, birdImg[1]);
+    let bird3 = new Bird(10, height - 20, 14, birdImg[0]);
+    
+    birds.push(bird2);
+    birds.push(bird3);
+
+    // Inicializar el slingshot y actualizar posiciones
     slingshot = new SlingShot(currentBird);
+    updateWaitingBirds();
 }
+
 
 function isBirdDead() {
     if (!currentBird || !isLaunched) return false;
@@ -594,7 +609,7 @@ class Box {
         this.life -= damage;
         this.isDamaged = true;
         if (this.life <=50){
-            this.spriteIndex++;
+            this.spriteIndex = 1;
         }
         // Efectos visuales adicionales basados en la vida
         if (this.life <= 0) {
