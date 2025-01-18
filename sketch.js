@@ -40,6 +40,7 @@ function setup() {
     stoneImg = loadImage("img/stone.png");
     groundImg = loadImage("img/ground3.png");
     backgroundImg = loadImage("img/background2.jpg");
+    splashImg = loadImage("img/splashScreen.png");
     slingshotImg = loadImage("img/slingshot.png");
     birdImg = [
         loadImage("img/red.png"),
@@ -49,6 +50,9 @@ function setup() {
     pigImg = loadImage("img/pig.webp");
     starImg = loadImage("img/star.png");
 
+    deadBirdImg = loadImage("img/deadBird.png");
+    damagedPigImg = loadImage("img/damagedPig.png");
+    veryDamagedPigImg = loadImage("img/veryDamagedPig.png");
     // Initialize positions after canvas is created
     waitingPositions = [
         {x: 50, y: height - 20},
@@ -67,12 +71,12 @@ function setup() {
     });
   
     startButton = createButton('Start Game');
-    startButton.position(width/2 - 50, height/2 + 50);
+    startButton.position(width/2 -70 , height/2 + 150)
     startButton.mousePressed(startGame);
     startButton.class('game-button');
     
     restartButton = createButton('Play Again');
-    restartButton.position(width/2 - 50, height/2 + 100);
+    restartButton.position(width/2 - 55, height/2 + 120);
     restartButton.mousePressed(restartGame);
     restartButton.class('game-button');
     restartButton.hide();
@@ -92,11 +96,7 @@ function startGame() {
     startButton.hide();
     gameStarted = true;
     score = 0;
-    currentState = GAME_STATE.PLAYING;
-    startButton.hide();
-    gameStarted = true;
-    score = 0;
-    
+  
     // Inicializar el mundo del juego
     setupGameWorld();
 }
@@ -133,13 +133,13 @@ function setupGameWorld() {
             const birdB = birds.find(p => p.body === bodyB);
             // Si encontramos un cerdo, reducimos su vida basado en la fuerza del impacto
             if (pigA ) {
-                if (pigA.reduceLife(impactForce * 0.5)) {
+                if (pigA.reduceLife(impactForce * 0.7)) {
                     pigs = pigs.filter(p => p !== pigA);
                 }
             }
             
             if (pigB  ) {
-                if (pigB.reduceLife(impactForce * 0.5)) {
+                if (pigB.reduceLife(impactForce * 0.7)) {
                     pigs = pigs.filter(p => p !== pigB);
                 }
             }
@@ -147,10 +147,11 @@ function setupGameWorld() {
             
             const boxA = objects.find(b => b.body === bodyA);
             const boxB = objects.find(b => b.body === bodyB);
-            if (boxA && !pigB && !boxB) {
+            if (boxA  && !boxB) {
                 
-                boxA.reduceLife(impactForce *2)
+                boxA.reduceLife(impactForce *4)
             }
+            
 
         });
     });
@@ -216,16 +217,7 @@ function draw() {
 
 function drawStartScreen() {
     push();
-    background(backgroundImg);
-    textAlign(CENTER, CENTER);
-    textSize(48);
-    fill(255);
-    stroke(0);
-    strokeWeight(6);  // Mayor grosor para el contorno
-    text('Angry Birds Clone', width / 2, height / 3);
-    noStroke();
-    textSize(24);
-    text('Use the slingshot to destroy all the pigs!', width / 2, height / 2);
+    background(splashImg);
     pop();
 }
 
@@ -235,6 +227,7 @@ function drawGameScreen() {
     Engine.update(engine);
 
     if (isBirdDead()) {
+      
         nextBird();
     }
 
@@ -374,9 +367,12 @@ function createMap() {
 }
 
 function createInitialBirds() {
+    console.log("hey");
     // First bird in slingshot
     let firstBird = new Bird(150, height -70, 11, birdImg[0]);
     birds.push(firstBird);
+    console.log("Birds push: ");
+    console.log(birds);
     currentBird = firstBird;
     
     // Create waiting birds
@@ -400,6 +396,7 @@ function isBirdDead() {
     if (currentBird.body.position.x > width + 100 || 
         currentBird.body.position.x < -100 || 
         currentBird.body.position.y > height + 100) {
+      
         return true;
     }
     
@@ -495,48 +492,53 @@ function calculateTrajectoryPoints(bird, sling) {
 }
 
 class Bird {
-  constructor(x, y, r, img){
-    this.body = Bodies.circle(
-      x, y, r, {
-        restitution: 0.1,
-        collisionFilter: {
-          category: 2,
-          mask: 1 | 3
-        }
+  constructor(x, y, r, img) {
+    this.body = Bodies.circle(x, y, r, {
+      restitution: 0.1,
+      collisionFilter: {
+        category: 2,
+        mask: 3
       }
-    );
-    Body.setMass(this.body,
-      4);
-    this.img = img;
-    World.add(world,
-      this.body); 
+    });
+    Body.setMass(this.body, 4);
+    this.normalImg = img;
+    this.deadImg = loadImage("img/deadBird.png"); // Necesitarás crear esta imagen
+    this.r = r;
+    this.isDying = false;
+    this.deathFrame = 0;
+    this.maxDeathFrames = 15;
+    World.add(world, this.body);
   }
-  
-  show(){
+
+  show() {
     push();
-    if(this.img) {
-      imageMode(CENTER);
-      translate(
-        this.body.position.x,
-        this.body.position.y);
-      rotate(this.body.angle);
-      image(this.img,
-        0,0,
-        2*this.body.circleRadius,
-        2*this.body.circleRadius);
+    imageMode(CENTER);
+    translate(this.body.position.x, this.body.position.y);
+    rotate(this.body.angle);
+
+    if (this.isDying) {
+      this.deathFrame++;
+      // Usar imagen de pájaro muerto
+      image(this.deadImg, 0, 0, 2 * this.r, 2 * this.r);
+      if (this.deathFrame >= this.maxDeathFrames) {
+        this.clear();
+      }
     } else {
-    ellipse(this.body.position.x,
-      this.body.position.y,
-      2*this.body.circleRadius,
-      2*this.body.circleRadius);
+      image(this.normalImg, 0, 0, 2 * this.r, 2 * this.r);
     }
     pop();
   }
-  
-  clear(){
+
+  die() {
+    this.isDying = true;
+  }
+
+  clear() {
+    die();
     World.remove(world, this.body);
   }
 }
+
 class Box {
   constructor(x, y, w, h,
     img, options={
@@ -655,55 +657,52 @@ class SlingShot {
 }
 
 class Pig {
-    constructor(x, y, r, img) {
-        this.body = Bodies.circle(x, y, r, {
-            restitution: 0.1,
-            collisionFilter: {
-                category: 1,           
-                mask: 2 | 3
-            }
-        });
-        this.r = r;
-        this.img = img;
-        this.life = 100;
-        this.points = 500;
-        this.isDamaged = false;
-        
-        World.add(world, this.body);
+  constructor(x, y, r, img) {
+    this.body = Bodies.circle(x, y, 1.9*r, {
+      restitution: 0.1,
+      collisionFilter: {
+        category: 1
+      }
+    });
+    this.r = r;
+    this.normalImg = img;
+    // Cargar imágenes para diferentes estados de daño
+    this.damagedImg = loadImage("img/damagedPig.png"); // Cerdo con daño medio
+    this.veryDamagedImg = loadImage("img/veryDamagedPig.png"); // Cerdo muy dañado
+    this.life = 100;
+    this.points = 500;
+    World.add(world, this.body);
+  }
+
+  show() {
+    push();
+    imageMode(CENTER);
+    translate(this.body.position.x, this.body.position.y);
+    rotate(this.body.angle);
+
+    // Seleccionar la imagen basada en la vida
+    let currentImg;
+    if (this.life > 70) {
+      currentImg = this.normalImg;
+    } else if (this.life > 30) {
+      currentImg = this.damagedImg;
+    } else {
+      currentImg = this.veryDamagedImg;
     }
-    
-    show() {
-        push();
-        translate(this.body.position.x, this.body.position.y);
-        rotate(this.body.angle);
-        imageMode(CENTER);
-        
-        // Aplicar efecto visual cuando el cerdo está dañado
-        if (this.isDamaged) {
-            tint(255, 0, 0, 200); // Tinte rojo para mostrar daño
-            this.isDamaged = false;
-        }
-        
-        // Ajustar el tamaño basado en la vida restante
-        // const size = map(this.life, 0, 100, this.r * 0.5, this.r * 2);
-        // image(this.img, 0, 0, size * 2, size * 2);
-        image(this.img,0,0, 2*this.body.circleRadius, 2*this.body.circleRadius);
-        noTint(); // Resetear el tinte
-        pop();
+
+    image(currentImg, 0, 0, 4 * this.r, 4 * this.r);
+    pop();
+  }
+
+  reduceLife(impactForce) {
+    const damage = impactForce * 3;
+    this.life -= damage;
+
+    if (this.life <= 0) {
+      score += this.points;
+      World.remove(world, this.body);
+      return true;
     }
-    
-    reduceLife(impactForce) {
-        const damage = impactForce ; // Reducir el daño para hacer el juego más balanceado
-        this.life -= damage;
-        this.isDamaged = true;
-        
-        // Efectos visuales adicionales basados en la vida
-        if (this.life <= 0) {
-            // Aquí podrías agregar efectos de partículas o animación de destrucción
-            score += this.points;
-            World.remove(world, this.body);
-            return true;
-        }
-        return false;
-    }
+    return false;
+  }
 }
