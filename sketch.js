@@ -117,7 +117,7 @@ function mousePressed() {
         }
     }
     else if (currentState === GAME_STATE.START) {
-      if (dist(mouseX, mouseY, width/2, buttonY) < buttonSize/2) {
+      if (dist(mouseX, mouseY, width/2, 500) < buttonSize/2) {
             startGame();
         }
         
@@ -271,7 +271,7 @@ function drawStartScreen() {
     push();
     background(splashImg);
   
-    drawRestartButton(width/2,  450, startIcon );
+    drawRestartButton(width/2,  520, startIcon );
     pop();
 }
 
