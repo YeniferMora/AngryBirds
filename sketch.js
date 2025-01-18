@@ -149,8 +149,9 @@ function setupGameWorld() {
             const boxB = objects.find(b => b.body === bodyB);
             if (boxA && !pigB && !boxB) {
                 
-                boxA.reduceLife(impactForce * 4)
+                boxA.reduceLife(impactForce *2)
             }
+
         });
     });
     
@@ -293,18 +294,16 @@ function drawGameOverScreen() {
     textAlign(CENTER, CENTER);
     textSize(48);
     fill(255);
-    stroke(0);
-    strokeWeight(4);
 
     if (levelCompleted) {
         text('Level Complete!', width / 2, height / 3);
       
-    // Mostrar estrellas según la puntuación
-    const stars = getStarsForScore(finalScore);
-    let starX = width / 2 - 50;
-    for (let i = 0; i < stars; i++) {
-        image(starImg, starX + i * 60, height / 2 + 40, 40, 40);  // Asegúrate de cargar la imagen de la estrella
-    }
+        // Mostrar estrellas según la puntuación
+        const stars = getStarsForScore(finalScore);
+        let starX = width / 2 - 50;
+        for (let i = 0; i < stars; i++) {
+            image(starImg, starX + i * 60, height / 2 + 40, 40, 40);  // Asegúrate de cargar la imagen de la estrella
+        }
     } else {
         text('Game Over', width / 2, height / 3);
     }
@@ -558,7 +557,7 @@ class Box {
   }
 
   reduceLife(impactForce) {
-        const damage = impactForce * 3; // Reducir el daño para hacer el juego más balanceado
+        const damage = impactForce; // Reducir el daño para hacer el juego más balanceado
         this.life -= damage;
         this.isDamaged = true;
         
