@@ -21,6 +21,7 @@ let soundBox;
 let soundBirdCollision;
 let soundPigCollision;
 let soundBirdFlying;
+let activeSounds = {};
 
 let boxSprites = {
     box: [],
@@ -162,15 +163,15 @@ function setupGameWorld() {
             const birdB = birds.find(p => p.body === bodyB);
             // Si encontramos un cerdo, reducimos su vida basado en la fuerza del impacto
             if (pigA ) {
-                soundPigCollision.play()
-                if (pigA.reduceLife(impactForce * 0.5)) {
+                playSound('pigCollision', soundPigCollision);
+                if (pigA.reduceLife(impactForce * 0.7)) {
                     pigs = pigs.filter(p => p !== pigA);
                 }
             }
             
             if (pigB  ) {
-                soundPigCollision.play()
-                if (pigB.reduceLife(impactForce * 0.5)) {
+                playSound('pigCollision', soundPigCollision);
+                if (pigB.reduceLife(impactForce * 0.7)) {
                     pigs = pigs.filter(p => p !== pigB);
                 }
             }
@@ -179,15 +180,15 @@ function setupGameWorld() {
             const boxA = objects.find(b => b.body === bodyA);
             const boxB = objects.find(b => b.body === bodyB);
             if (boxA  && !boxB) {
-                soundBox.play();  
+                playSound('boxCollision', soundBox);
                 boxA.reduceLife(impactForce *2)
             }
             if (boxB && (birdA || birdB)) {
-                soundBox.play();  
+                playSound('boxCollision', soundBox);
                 boxB.reduceLife(impactForce *2)
             }
             if(birdA || birdB){
-                soundBirdCollision.play()
+                playSound('birdCollision', soundBirdCollision);
             }
 
         });
@@ -197,6 +198,16 @@ function setupGameWorld() {
 }
 
 
+function playSound(soundId, sound) {
+    if (!activeSounds[soundId]) {
+        sound.play();
+        activeSounds[soundId] = true;
+
+        sound.onended(() => {
+            activeSounds[soundId] = false;
+        });
+    }
+}
 
 function restartGame() {
     // Limpiar el mundo físico
