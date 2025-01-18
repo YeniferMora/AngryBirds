@@ -2,7 +2,7 @@ const {Engine, World, Bodies, Mouse, MouseConstraint, Body, Constraint, Events} 
 
 let bird, birdImg = [], slingshot,
   mc, backgroundImg, slingshotImg;
-let engine, world, ground, objects = [], boxImg, wood2Img, stoneImg, groundImg, starImg;
+let engine, world, ground, objects = [], groundImg, starImg;
 let birds = [];
 let currentBird;
 
@@ -17,6 +17,17 @@ let height = 500;
 let isLaunched = false;
 let waitingPositions;
 
+let soundBox;
+let soundBirdCollision;
+let soundPigCollision;
+let soundBirdFlying;
+
+let boxSprites = {
+    box: [],
+    wood: [],
+    stone: [],
+
+  };
 const GAME_STATE = {
     START: 'start',
     PLAYING: 'playing',
@@ -30,14 +41,22 @@ let startButton;
 let restartButton;
 let levelCompleted = false;
 
-
+function preload() {
+    soundBox = loadSound('sound/wood_collision.wav');  // Sonido para la caja
+    soundBirdCollision = loadSound('sound/bird_collision.wav');  // Sonido para el pájaro
+    soundPigCollision = loadSound('sound/piglette_collision.wav'); 
+    soundBirdFlying = loadSound('sound/bird_flying.wav')
+}
 function setup() {
     const canvas = createCanvas(width,height);
   
     
-    boxImg = loadImage("img/wood1.png");
-    wood2Img = loadImage("img/wood2.png");
-    stoneImg = loadImage("img/stone.png");
+    boxSprites.box.push(loadImage("img/wood1.png"));
+    boxSprites.stone.push(loadImage("img/stone.png"));
+    boxSprites.wood.push(loadImage("img/wood2.png"));
+    boxSprites.box.push(loadImage("img/wood_v3.png"));
+    boxSprites.stone.push(loadImage("img/stone2.png"));
+    boxSprites.wood.push(loadImage("img/wood2_v2.png"));
     groundImg = loadImage("img/ground3.png");
     backgroundImg = loadImage("img/background2.jpg");
     splashImg = loadImage("img/splashScreen.png");
@@ -133,12 +152,14 @@ function setupGameWorld() {
             const birdB = birds.find(p => p.body === bodyB);
             // Si encontramos un cerdo, reducimos su vida basado en la fuerza del impacto
             if (pigA ) {
+                soundPigCollision.play()
                 if (pigA.reduceLife(impactForce * 0.7)) {
                     pigs = pigs.filter(p => p !== pigA);
                 }
             }
             
             if (pigB  ) {
+                soundPigCollision.play()
                 if (pigB.reduceLife(impactForce * 0.7)) {
                     pigs = pigs.filter(p => p !== pigB);
                 }
@@ -148,10 +169,16 @@ function setupGameWorld() {
             const boxA = objects.find(b => b.body === bodyA);
             const boxB = objects.find(b => b.body === bodyB);
             if (boxA  && !boxB) {
-                
-                boxA.reduceLife(impactForce *4)
+                soundBox.play();  
+                boxA.reduceLife(impactForce *2)
             }
-            
+            if (boxB && (birdA || birdB)) {
+                soundBox.play();  
+                boxB.reduceLife(impactForce *2)
+            }
+            if(birdA || birdB){
+                soundBirdCollision.play()
+            }
 
         });
     });
@@ -343,33 +370,33 @@ function createPigs() {
 
 function createMap() {
   objects= [];
-  objects.push(new Box( 380, height - 40, 40, 40, boxImg));
-  objects.push(new Box( 620, height - 40, 40, 40, boxImg));
-  objects.push(new Box( 500, height - 40, 40, 40, boxImg));
-  objects.push(new Box( 580, height - 50, 150, 10, wood2Img)); 
-  objects.push(new Box( 420, height - 50, 150, 10, wood2Img)); 
+  objects.push(new Box( 380, height - 40, 40, 40,'box'));
+  objects.push(new Box( 620, height - 40, 40, 40, 'box'));
+  objects.push(new Box( 500, height - 40, 40, 40, 'box'));
+  objects.push(new Box( 580, height - 50, 150, 10, 'wood')); 
+  objects.push(new Box( 420, height - 50, 150, 10, 'wood')); 
 
-  objects.push(new Box( 430, height - 90, 40, 40, stoneImg)); 
-  objects.push(new Box( 570, height - 90, 40, 40, stoneImg)); 
-  objects.push(new Box( 350, height - 90, 10, 40, stoneImg));
-  objects.push(new Box( 650, height - 90, 10, 40, stoneImg));
+  objects.push(new Box( 430, height - 90, 40, 40, 'stone')); 
+  objects.push(new Box( 570, height - 90, 40, 40, 'stone')); 
+  objects.push(new Box( 350, height - 90, 10, 40, 'stone'));
+  objects.push(new Box( 650, height - 90, 10, 40, 'stone'));
 
-  objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
-  objects.push(new Box( 500, height - 100, 200, 10, wood2Img));
+  objects.push(new Box( 500, height - 100, 200, 10, 'wood'));
+  objects.push(new Box( 500, height - 100, 200, 10, 'wood'));
 
-  objects.push(new Box( 430, height - 160, 20, 70, stoneImg)); 
-  objects.push(new Box( 570, height - 160, 20, 70, stoneImg));
+  objects.push(new Box( 430, height - 160, 20, 70, 'stone')); 
+  objects.push(new Box( 570, height - 160, 20, 70, 'stone'));
 
-  objects.push(new Box( 500, height - 180, 170, 10, wood2Img));
-  objects.push(new Box( 430, height - 220, 40, 40, boxImg)); 
-  objects.push(new Box( 570, height - 220, 40, 40, boxImg)); 
+  objects.push(new Box( 500, height - 180, 170, 10, 'wood'));
+  objects.push(new Box( 430, height - 220, 40, 40, 'box')); 
+  objects.push(new Box( 570, height - 220, 40, 40, 'box')); 
   
 }
 
 function createInitialBirds() {
     console.log("hey");
     // First bird in slingshot
-    let firstBird = new Bird(150, height -70, 11, birdImg[0]);
+    let firstBird = new Bird(150, height -70, 14, birdImg[0]);
     birds.push(firstBird);
     console.log("Birds push: ");
     console.log(birds);
@@ -380,7 +407,7 @@ function createInitialBirds() {
         let bird = new Bird(
             waitingPositions[i].x,
             waitingPositions[i].y,
-            11,
+            14,
             birdImg[(i + 1) % birdImg.length]
         );
         birds.push(bird);
@@ -541,19 +568,23 @@ class Bird {
 
 class Box {
   constructor(x, y, w, h,
-    img, options={
-    collisionFilter: {
+    type, img, options={
+        collisionFilter: {
           category: 1,
           mask: 2 | 3
-        }}){
+        }
+    })
+    {
       this.body =
         Bodies.rectangle(
         x, y, w, h, options);
       this.w = w;
       this.h = h;
+      this.type = type;
       this.img = img;
       this.points = 10;
       this.life = 100;
+      this.spriteIndex = 0; // Índice del sprite actual
       World.add(world,
       this.body);
   }
@@ -562,7 +593,9 @@ class Box {
         const damage = impactForce; // Reducir el daño para hacer el juego más balanceado
         this.life -= damage;
         this.isDamaged = true;
-        
+        if (this.life <=50){
+            this.spriteIndex++;
+        }
         // Efectos visuales adicionales basados en la vida
         if (this.life <= 0) {
             // Aquí podrías agregar efectos de partículas o animación de destrucción
@@ -576,12 +609,12 @@ class Box {
   show() {
     push();
     translate(this.body.position.x,
-         this.body.position.y);
+            this.body.position.y);
     rotate(this.body.angle);
-    
-    if(this.img && this.life>0){
-      imageMode(CENTER);
-      image(this.img,
+    let imgSprite = this.type ? boxSprites[this.type][this.spriteIndex] : this.img
+    if(imgSprite && this.life>0 ){
+        imageMode(CENTER);
+        image(imgSprite,
             0,0,
             this.w, this.h);
     }
@@ -591,7 +624,7 @@ class Box {
 }
 class Ground extends Box {
   constructor(x,y,w,h,img){
-    super(x,y,w,h, img,
+    super(x,y,w,h,'', img,
       {isStatic: true,
       collisionFilter: {
           category: 3,
@@ -646,6 +679,7 @@ class SlingShot {
         ) {
             this.sling.bodyB.collisionFilter.category = 1;
             this.sling.bodyB = null;
+            soundBirdFlying.play()
             isLaunched = true;
         }
     }
